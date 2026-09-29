@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kalkulator Gerak Jatuh Bebas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .sky {
+            background: linear-gradient(to bottom, #87CEEB 0%, #E0F6FF 100%);
+        }
+        .ground {
+            background: #8B4513;
+        }
+        /* Object styles */
+        #object {
+            /* Transition will be applied dynamically via JS */
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 font-sans min-h-screen p-4 flex flex-col lg:flex-row gap-6 justify-center items-start">
+
+    <!-- Panel Kontrol & Hasil -->
+    <div class="w-full lg:w-1/2 max-w-2xl bg-white rounded-xl shadow-lg p-6 flex flex-col gap-6">
+        <h1 class="text-2xl font-bold text-center text-blue-600">Kalkulator Gerak Jatuh Bebas (GJB)</h1>
+        
+        <!-- Form Input -->
+        <div class="space-y-4">
+            <div>
+                <label for="height" class="block text-sm font-medium text-gray-700">Tinggi Awal (h) dalam meter <span class="text-red-500">*</span></label>
+                <input type="number" id="height" min="0.1" step="0.1" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-3 border focus:border-blue-500 focus:ring-blue-500" placeholder="Contoh: 100">
+            </div>
+            <div>
+                <label for="mass" class="block text-sm font-medium text-gray-700">Massa Benda (m) dalam kg (opsional)</label>
+                <input type="number" id="mass" min="0.1" step="0.1" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-3 border focus:border-blue-500 focus:ring-blue-500" placeholder="Contoh: 5">
+                <p class="text-xs text-gray-500 mt-1 italic">*Catatan: Pada gerak jatuh bebas tanpa hambatan udara, massa benda tidak mempengaruhi waktu dan kecepatan akhir.</p>
+            </div>
+            <div class="bg-blue-50 p-4 rounded-md border border-blue-100">
+                <p class="text-sm font-bold mb-2">Konstanta Bawaan:</p>
+                <ul class="text-sm list-disc list-inside space-y-1">
+                    <li>Kecepatan awal (v<sub>0</sub>) = <strong>0 m/s</strong></li>
+                    <li>Percepatan gravitasi (g) = <strong>9.8 m/s²</strong></li>
+                </ul>
+            </div>
+            <button onclick="calculateAndAnimate()" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition shadow-md active:transform active:scale-95">Hitung & Visualisasikan</button>
+        </div>
+
+        <!-- Panel Hasil (Awalnya Sembunyi) -->
+        <div id="result-panel" class="hidden flex-col gap-4 border-t pt-4">
+            <h2 class="text-xl font-bold text-gray-800">Hasil Perhitungan</h2>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="bg-green-100 p-4 rounded-lg border border-green-200">
+                    <p class="text-sm text-green-800 font-semibold mb-1">Lama Waktu Jatuh (t)</p>
+                    <p class="text-3xl font-bold text-green-900" id="result-time">0 s</p>
+                </div>
+                <div class="bg-orange-100 p-4 rounded-lg border border-orange-200">
+                    <p class="text-sm text-orange-800 font-semibold mb-1">Kecepatan Akhir (v<sub>t</sub>)</p>
+                    <p class="text-3xl font-bold text-orange-900" id="result-velocity">0 m/s</p>
+                </div>
+            </div>
+
+            <!-- Proses Perhitungan -->
+            <div class="bg-gray-800 text-green-400 p-4 rounded-lg text-sm font-mono overflow-x-auto shadow-inner mt-2">
+                <h3 class="font-bold text-white mb-3 border-b border-gray-600 pb-2">PROSES PERHITUNGAN:</h3>
+                <div id="calculation-steps" class="space-y-2"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Panel Visualisasi -->
+    <div class="w-full lg:w-[400px] bg-white rounded-xl shadow-lg flex flex-col overflow-hidden h-[600px] border">
+        <h2 class="text-lg font-bold text-center bg-gray-50 py-3 border-b text-gray-700">Visualisasi Simulasi</h2>
+        
+        <div class="relative flex-grow sky overflow-hidden" id="simulation-area">
+            <!-- Teks bantuan / status -->
+            <div id="sim-status" class="absolute top-4 right-4 bg-white/70 px-2 py-1 rounded text-xs font-bold text-gray-600 z-30">
+                Menunggu input...
+            </div>
+
+            <!-- Skala Ketinggian -->
+            <div id="scale" class="absolute left-0 top-0 bottom-10 w-14 border-r-2 border-gray-400 border-dashed flex flex-col justify-between items-end pr-2 py-4 text-xs text-gray-700 font-bold bg-white/40 backdrop-blur-sm z-20">
+                <span id="scale-max">H m</span>
+                <span id="scale-mid">H/2 m</span>
+                <span>0 m</span>
+            </div>
+            
+            <!-- Benda (Bola) -->
+            <div id="object" class="absolute left-1/2 transform -translate-x-1/2 w-8 h-8 bg-red-600 rounded-full shadow-[0_4px_10px_rgba(0,0,0,0.5)] z-10" style="top: 16px;">
+                <div class="w-2 h-2 bg-white/50 rounded-full absolute top-1 left-1"></div>
+            </div>
+            
+            <!-- Tanah -->
+            <div class="absolute bottom-0 w-full h-10 ground z-20 flex items-center justify-center border-t-4 border-green-800">
+                <span class="text-green-100 text-sm font-bold tracking-widest">PERMUKAAN TANAH</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const GRAVITY = 9.8; // Percepatan gravitasi bumi m/s^2
+
+        function calculateAndAnimate() {
+            const hInput = document.getElementById('height').value;
+            const h = parseFloat(hInput);
+            
+            if (isNaN(h) || h <= 0) {
+                alert('Mohon masukkan tinggi awal yang valid (angka lebih besar dari 0).');
+                return;
+            }
+
+            // --- PERHITUNGAN MATEMATIKA ---
+            // Waktu jatuh: t = sqrt(2h / g)
+            const t = Math.sqrt((2 * h) / GRAVITY);
+            
+            // Kecepatan akhir: vt = g * t
+            const vt = GRAVITY * t;
+
+            // --- UPDATE UI HASIL ---
+            document.getElementById('result-time').innerText = t.toFixed(2) + ' s';
+            document.getElementById('result-velocity').innerText = vt.toFixed(2) + ' m/s';
+
+            // --- GENERATE TEKS PROSES PERHITUNGAN ---
+            const stepsHtml = `
+<div class="mb-4">
+    <span class="text-gray-400">// 1. Menghitung Lama Waktu Jatuh (t)</span><br>
+    <span class="text-blue-300">Rumus: t = &radic;(2 &times; h / g)</span><br>
+    t = &radic;(2 &times; ${h} / 9.8)<br>
+    t = &radic;(${2*h} / 9.8)<br>
+    t = &radic;${((2*h)/9.8).toFixed(4)}<br>
+    <span class="text-white font-bold">&rarr; t &approx; ${t.toFixed(2)} detik</span>
+</div>
+<div>
+    <span class="text-gray-400">// 2. Menghitung Kecepatan Akhir (v<sub>t</sub>) saat menyentuh tanah</span><br>
+    <span class="text-blue-300">Rumus: v<sub>t</sub> = v<sub>0</sub> + (g &times; t)</span><br>
+    <span class="text-gray-400">Karena v<sub>0</sub> = 0, maka:</span><br>
+    v<sub>t</sub> = 9.8 &times; ${t.toFixed(4)}<br>
+    <span class="text-white font-bold">&rarr; v<sub>t</sub> &approx; ${vt.toFixed(2)} m/s</span>
+</div>`;
+            
+            document.getElementById('calculation-steps').innerHTML = stepsHtml;
+            
+            // Tampilkan panel hasil
+            const resultPanel = document.getElementById('result-panel');
+            resultPanel.classList.remove('hidden');
+            resultPanel.classList.add('flex');
+
+            // --- LOGIKA ANIMASI VISUALISASI ---
+            const obj = document.getElementById('object');
+            const scaleMax = document.getElementById('scale-max');
+            const scaleMid = document.getElementById('scale-mid');
+            const simStatus = document.getElementById('sim-status');
+            
+            // Update teks skala UI
+            scaleMax.innerText = h + 'm';
+            scaleMid.innerText = (h/2).toFixed(1) + 'm';
+            simStatus.innerText = 'Bersiap...';
+            simStatus.className = 'absolute top-4 right-4 bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-xs font-bold z-30 shadow';
+
+            // Dapatkan dimensi area simulasi
+            const simArea = document.getElementById('simulation-area');
+            const groundHeight = 40; // tinggi div ground
+            const objectHeight = 32; // w-8 h-8 = 32px
+            
+            // Perhitungkan jarak piksel jatuh dari atas ke tepat di atas tanah
+            // Mulai dari top: 16px
+            const startTop = 16;
+            const dropDistance = simArea.offsetHeight - groundHeight - objectHeight;
+
+            // 1. Reset posisi objek tanpa animasi (instan kembali ke atas)
+            obj.style.transition = 'none';
+            obj.style.top = startTop + 'px';
+            
+            // 2. Force reflow agar browser mendaftarkan posisi reset
+            void obj.offsetWidth;
+
+            // 3. Mulai animasi setelah jeda singkat (agar terlihat efek jatuhnya)
+            setTimeout(() => {
+                simStatus.innerText = 'Jatuh!';
+                simStatus.className = 'absolute top-4 right-4 bg-red-100 text-red-800 px-2 py-1 rounded text-xs font-bold z-30 shadow animate-pulse';
+                
+                // Gunakan ease-in karena dalam gerak jatuh bebas benda dipercepat (kecepatan bertambah)
+                // Durasi animasi disesuaikan dengan nilai t (dibatasi maks 3 detik agar UX tidak kelamaan menunggu jika h sangat tinggi, atau gunakan t detik penuh jika diinginkan. Di sini kita cap max 5 detik)
+                
+                let animDuration = t;
+                if (animDuration > 5) animDuration = 5; // UX cap
+
+                obj.style.transition = `top ${animDuration}s cubic-bezier(0.55, 0.085, 0.68, 0.53)`; // ease-in timing function
+                obj.style.top = `${dropDistance}px`;
+
+                // Setel callback setelah animasi selesai
+                setTimeout(() => {
+                    simStatus.innerText = 'Tiba di tanah';
+                    simStatus.className = 'absolute top-4 right-4 bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-bold z-30 shadow';
+                }, animDuration * 1000);
+
+            }, 500); // jeda 0.5 detik sebelum jatuh
+        }
+    </script>
+</body>
+</html>
