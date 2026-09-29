@@ -42,7 +42,7 @@
                     <li>Percepatan gravitasi (g) = <strong>9.8 m/s²</strong></li>
                 </ul>
             </div>
-            <button onclick="calculateAndAnimate()" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition shadow-md active:transform active:scale-95">Hitung & Visualisasikan</button>
+            <button type="button" onclick="calculateAndAnimate()" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition shadow-md active:transform active:scale-95">Hitung Hasil</button>
         </div>
 
         <!-- Panel Hasil (Awalnya Sembunyi) -->
@@ -70,7 +70,13 @@
 
     <!-- Panel Visualisasi -->
     <div class="w-full lg:w-[400px] bg-white rounded-xl shadow-lg flex flex-col overflow-hidden h-[600px] border">
-        <h2 class="text-lg font-bold text-center bg-gray-50 py-3 border-b text-gray-700">Visualisasi Simulasi</h2>
+        <div class="bg-gray-50 border-b p-3 flex flex-col gap-2">
+            <h2 class="text-lg font-bold text-center text-gray-700">Visualisasi Simulasi</h2>
+            <div class="flex justify-center gap-2">
+                <button type="button" onclick="resetSimulation()" class="bg-gray-200 text-gray-700 font-semibold py-1.5 px-4 rounded shadow-sm hover:bg-gray-300 transition text-sm">Reset Animasi</button>
+                <button type="button" onclick="calculateAndAnimate()" class="bg-green-600 text-white font-semibold py-1.5 px-4 rounded shadow-sm hover:bg-green-700 transition text-sm active:scale-95">Mulai Animasi</button>
+            </div>
+        </div>
         
         <div class="relative flex-grow sky overflow-hidden" id="simulation-area">
             <!-- Teks bantuan / status -->
@@ -99,8 +105,25 @@
 
     <script>
         const GRAVITY = 9.8; // Percepatan gravitasi bumi m/s^2
+        let fallTimeout;
+        let arriveTimeout;
+
+        function resetSimulation() {
+            clearTimeout(fallTimeout);
+            clearTimeout(arriveTimeout);
+            
+            const obj = document.getElementById('object');
+            obj.style.transition = 'none';
+            obj.style.top = '16px';
+            
+            const simStatus = document.getElementById('sim-status');
+            simStatus.innerText = 'Siap...';
+            simStatus.className = 'absolute top-4 right-4 bg-white/70 px-2 py-1 rounded text-xs font-bold text-gray-600 z-30 shadow';
+        }
 
         function calculateAndAnimate() {
+            clearTimeout(fallTimeout);
+            clearTimeout(arriveTimeout);
             const hInput = document.getElementById('height').value;
             const h = parseFloat(hInput);
             
@@ -175,7 +198,7 @@
             void obj.offsetWidth;
 
             // 3. Mulai animasi setelah jeda singkat (agar terlihat efek jatuhnya)
-            setTimeout(() => {
+            fallTimeout = setTimeout(() => {
                 simStatus.innerText = 'Jatuh!';
                 simStatus.className = 'absolute top-4 right-4 bg-red-100 text-red-800 px-2 py-1 rounded text-xs font-bold z-30 shadow animate-pulse';
                 
@@ -189,7 +212,7 @@
                 obj.style.top = `${dropDistance}px`;
 
                 // Setel callback setelah animasi selesai
-                setTimeout(() => {
+                arriveTimeout = setTimeout(() => {
                     simStatus.innerText = 'Tiba di tanah';
                     simStatus.className = 'absolute top-4 right-4 bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-bold z-30 shadow';
                 }, animDuration * 1000);
