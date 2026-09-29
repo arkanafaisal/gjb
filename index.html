@@ -91,8 +91,13 @@
                 <span>0 m</span>
             </div>
             
+            <!-- Garis Kursor Y -->
+            <div id="y-cursor" class="absolute left-14 right-0 border-t-2 border-blue-500 border-dashed z-10 hidden" style="top: 32px;">
+                <span id="y-cursor-text" class="absolute left-2 -top-3 text-xs font-bold text-blue-700 bg-white/80 px-1 rounded shadow-sm"></span>
+            </div>
+            
             <!-- Benda (Bola) -->
-            <div id="object" class="absolute left-1/2 transform -translate-x-1/2 w-8 h-8 bg-red-600 rounded-full shadow-[0_4px_10px_rgba(0,0,0,0.5)] z-10" style="top: 16px;">
+            <div id="object" class="absolute left-1/2 transform -translate-x-1/2 w-8 h-8 bg-red-600 rounded-full shadow-[0_4px_10px_rgba(0,0,0,0.5)] z-20" style="top: 16px;">
                 <div class="w-2 h-2 bg-white/50 rounded-full absolute top-1 left-1"></div>
             </div>
             
@@ -107,23 +112,29 @@
         const GRAVITY = 9.8; // Percepatan gravitasi bumi m/s^2
         let fallTimeout;
         let arriveTimeout;
+        let animationFrameId;
+        let isAnimating = false;
 
         function resetSimulation() {
             clearTimeout(fallTimeout);
             clearTimeout(arriveTimeout);
+            cancelAnimationFrame(animationFrameId);
+            isAnimating = false;
             
             const obj = document.getElementById('object');
             obj.style.transition = 'none';
             obj.style.top = '16px';
             
+            const cursor = document.getElementById('y-cursor');
+            if(cursor) cursor.classList.add('hidden');
+            
             const simStatus = document.getElementById('sim-status');
-            simStatus.innerText = 'Siap...';
+            simStatus.innerText = 'Kecepatan: 0.0 m/s';
             simStatus.className = 'absolute top-4 right-4 bg-white/70 px-2 py-1 rounded text-xs font-bold text-gray-600 z-30 shadow';
         }
 
         function calculateAndAnimate() {
-            clearTimeout(fallTimeout);
-            clearTimeout(arriveTimeout);
+            resetSimulation();
             const hInput = document.getElementById('height').value;
             const h = parseFloat(hInput);
             
@@ -177,8 +188,8 @@
             // Update teks skala UI
             scaleMax.innerText = h + 'm';
             scaleMid.innerText = (h/2).toFixed(1) + 'm';
-            simStatus.innerText = 'Bersiap...';
-            simStatus.className = 'absolute top-4 right-4 bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-xs font-bold z-30 shadow';
+            simStatus.innerText = 'Kecepatan: 0.0 m/s';
+            simStatus.className = 'absolute top-4 right-4 bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-bold z-30 shadow';
 
             // Dapatkan dimensi area simulasi
             const simArea = document.getElementById('simulation-area');
@@ -188,35 +199,71 @@
             // Perhitungkan jarak piksel jatuh dari atas ke tepat di atas tanah
             // Mulai dari top: 16px
             const startTop = 16;
-            const dropDistance = simArea.offsetHeight - groundHeight - objectHeight;
+            const dropDistance = simArea.offsetHeight - groundHeight - objectHeight - startTop;
 
-            // 1. Reset posisi objek tanpa animasi (instan kembali ke atas)
+            const cursor = document.getElementById('y-cursor');
+            const cursorText = document.getElementById('y-cursor-text');
+            
+            // Tampilkan kursor
+            cursor.classList.remove('hidden');
+            cursor.style.top = (startTop + objectHeight/2) + 'px';
+            cursorText.innerText = h.toFixed(1) + ' m';
+
+            // 1. Reset posisi objek tanpa animasi
             obj.style.transition = 'none';
             obj.style.top = startTop + 'px';
             
-            // 2. Force reflow agar browser mendaftarkan posisi reset
-            void obj.offsetWidth;
-
-            // 3. Mulai animasi setelah jeda singkat (agar terlihat efek jatuhnya)
+            // 2. Mulai animasi setelah jeda singkat
             fallTimeout = setTimeout(() => {
-                simStatus.innerText = 'Jatuh!';
-                simStatus.className = 'absolute top-4 right-4 bg-red-100 text-red-800 px-2 py-1 rounded text-xs font-bold z-30 shadow animate-pulse';
+                isAnimating = true;
+                let startTime = performance.now();
                 
-                // Gunakan ease-in karena dalam gerak jatuh bebas benda dipercepat (kecepatan bertambah)
-                // Durasi animasi disesuaikan dengan nilai t (dibatasi maks 3 detik agar UX tidak kelamaan menunggu jika h sangat tinggi, atau gunakan t detik penuh jika diinginkan. Di sini kita cap max 5 detik)
+                // Kap durasi animasi visual maks 5 detik agar tidak kelamaan
+                let timeScale = 1;
+                if (t > 5) {
+                    timeScale = t / 5;
+                }
                 
-                let animDuration = t;
-                if (animDuration > 5) animDuration = 5; // UX cap
-
-                obj.style.transition = `top ${animDuration}s cubic-bezier(0.55, 0.085, 0.68, 0.53)`; // ease-in timing function
-                obj.style.top = `${dropDistance}px`;
-
-                // Setel callback setelah animasi selesai
-                arriveTimeout = setTimeout(() => {
-                    simStatus.innerText = 'Tiba di tanah';
-                    simStatus.className = 'absolute top-4 right-4 bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-bold z-30 shadow';
-                }, animDuration * 1000);
-
+                function animate(currentTime) {
+                    if (!isAnimating) return;
+                    
+                    let elapsedReal = (currentTime - startTime) / 1000; 
+                    let elapsedSim = elapsedReal * timeScale;
+                    
+                    if (elapsedSim >= t) {
+                        elapsedSim = t;
+                        isAnimating = false;
+                    }
+                    
+                    // v = g * t
+                    let currentV = GRAVITY * elapsedSim;
+                    // y = h - 0.5 * g * t^2
+                    let currentH = h - 0.5 * GRAVITY * Math.pow(elapsedSim, 2);
+                    if (currentH < 0) currentH = 0;
+                    
+                    // Update texts
+                    simStatus.innerText = 'Kecepatan: ' + currentV.toFixed(1) + ' m/s';
+                    cursorText.innerText = currentH.toFixed(1) + ' m';
+                    
+                    // Update visual position
+                    // fraction = distance fallen / h
+                    let distanceFallen = h - currentH;
+                    let fraction = distanceFallen / h;
+                    let currentTop = startTop + (fraction * dropDistance);
+                    
+                    obj.style.top = currentTop + 'px';
+                    cursor.style.top = (currentTop + objectHeight/2) + 'px';
+                    
+                    if (isAnimating) {
+                        animationFrameId = requestAnimationFrame(animate);
+                    } else {
+                        simStatus.className = 'absolute top-4 right-4 bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-bold z-30 shadow';
+                        simStatus.innerText = 'Tiba! Kec: ' + vt.toFixed(1) + ' m/s';
+                        cursorText.innerText = '0.0 m';
+                    }
+                }
+                
+                animationFrameId = requestAnimationFrame(animate);
             }, 500); // jeda 0.5 detik sebelum jatuh
         }
     </script>
