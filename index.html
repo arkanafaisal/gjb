@@ -113,9 +113,15 @@
         </div>
 
         <!-- Panel Grafik -->
-        <div class="bg-white rounded-xl shadow-lg border p-4 flex flex-col">
-            <h2 class="text-sm font-bold text-center text-gray-700 mb-2">Grafik Kecepatan - Waktu (v-t)</h2>
-            <canvas id="velocityChart"></canvas>
+        <div class="bg-white rounded-xl shadow-lg border p-4 flex flex-col gap-4">
+            <div>
+                <h2 class="text-sm font-bold text-center text-gray-700 mb-1">Grafik Kecepatan (v-t)</h2>
+                <canvas id="velocityChart"></canvas>
+            </div>
+            <div class="border-t pt-4">
+                <h2 class="text-sm font-bold text-center text-gray-700 mb-1">Grafik Ketinggian (y-t)</h2>
+                <canvas id="heightChart"></canvas>
+            </div>
         </div>
 
     </div>
@@ -127,6 +133,7 @@
         let animationFrameId;
         let isAnimating = false;
         let vChart;
+        let hChart;
 
         function resetSimulation() {
             clearTimeout(fallTimeout);
@@ -149,6 +156,11 @@
                 vChart.data.labels = [];
                 vChart.data.datasets[0].data = [];
                 vChart.update();
+            }
+            if (hChart) {
+                hChart.data.labels = [];
+                hChart.data.datasets[0].data = [];
+                hChart.update();
             }
         }
 
@@ -214,6 +226,48 @@
                 vChart.options.scales.x.max = parseFloat(t.toFixed(2));
                 vChart.options.scales.y.max = parseFloat(vt.toFixed(2));
                 vChart.update();
+            }
+
+            const ctxH = document.getElementById('heightChart').getContext('2d');
+            if (!hChart) {
+                hChart = new Chart(ctxH, {
+                    type: 'line',
+                    data: {
+                        datasets: [{
+                            label: 'Ketinggian (m)',
+                            data: [],
+                            borderColor: 'rgb(59, 130, 246)',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            borderWidth: 2,
+                            fill: true,
+                            pointRadius: 0,
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        animation: false,
+                        scales: {
+                            x: {
+                                type: 'linear',
+                                min: 0,
+                                max: parseFloat(t.toFixed(2)),
+                                title: { display: true, text: 'Waktu (s)' }
+                            },
+                            y: {
+                                min: 0,
+                                max: h,
+                                title: { display: true, text: 'Ketinggian (m)' }
+                            }
+                        },
+                        plugins: {
+                            legend: { display: false }
+                        }
+                    }
+                });
+            } else {
+                hChart.options.scales.x.max = parseFloat(t.toFixed(2));
+                hChart.options.scales.y.max = h;
+                hChart.update();
             }
 
             // --- GENERATE TEKS PROSES PERHITUNGAN ---
@@ -311,6 +365,10 @@
                     if (vChart) {
                         vChart.data.datasets[0].data.push({x: elapsedSim, y: currentV});
                         vChart.update();
+                    }
+                    if (hChart) {
+                        hChart.data.datasets[0].data.push({x: elapsedSim, y: currentH});
+                        hChart.update();
                     }
 
                     // Update visual position
