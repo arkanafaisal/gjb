@@ -185,12 +185,23 @@
         function calculateAndAnimate() {
             resetSimulation();
             const hInput = document.getElementById('height').value;
+            const mInput = document.getElementById('mass').value;
             const h = parseFloat(hInput);
             
             if (isNaN(h) || h <= 0) {
                 alert('Mohon masukkan tinggi awal yang valid (angka lebih besar dari 0).');
                 return;
             }
+
+            // Simpan input ke query parameter agar persisten saat refresh
+            const urlParams = new URLSearchParams(window.location.search);
+            urlParams.set('h', hInput);
+            if (mInput) {
+                urlParams.set('m', mInput);
+            } else {
+                urlParams.delete('m');
+            }
+            window.history.replaceState({}, '', window.location.pathname + '?' + urlParams.toString());
 
             // --- PERHITUNGAN MATEMATIKA ---
             // Waktu jatuh: t = sqrt(2h / g)
@@ -410,6 +421,26 @@
                 animationFrameId = requestAnimationFrame(animate);
             }, 500); // jeda 0.5 detik sebelum jatuh
         }
+    </script>
+    <script>
+        // Auto-load dari URL Parameter saat web direfresh
+        window.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const hParam = urlParams.get('h');
+            const mParam = urlParams.get('m');
+            
+            if (hParam) {
+                document.getElementById('height').value = hParam;
+                if (mParam) {
+                    document.getElementById('mass').value = mParam;
+                }
+                
+                // Beri sedikit jeda agar font/UI siap dirender dengan baik sebelum animasi berjalan
+                setTimeout(() => {
+                    calculateAndAnimate();
+                }, 100);
+            }
+        });
     </script>
 </body>
 </html>
